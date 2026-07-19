@@ -16,6 +16,7 @@ import gellary from "./routes/gallery.js"
 import news from "./routes/news.js"
 import orders from "./routes/orders.js"
 import projects from "./routes/projects.js"
+import "./config/passport.js";
 
 env.config();
 
