@@ -1,19 +1,20 @@
+// routes/projects.js
+
 import express from 'express';
 import mongoose from 'mongoose';
 import Project from '../models/Projects.js';
 import axios from 'axios';
+import User from '../models/User.js'; // Make sure to import User model
 
 const router = express.Router();
 
 // ==================== EMAIL SERVICES ====================
 
-// Send project status update email to all subscribers
 const sendProjectStatusUpdateEmail = async (project, oldStatus) => {
     try {
         const apiKey = process.env.BREVO_API_KEY;
         const url = "https://api.brevo.com/v3/smtp/email";
 
-        // Get all users with emails
         const users = await User.find({ email: { $ne: null } }).select('email name').lean();
 
         if (users.length === 0) {
@@ -145,16 +146,14 @@ router.post('/', async (req, res) => {
             active
         } = req.body;
 
-        // Validate required fields
         if (!slug || !name || !tag || !image || !tagline || !description ||
             !longDescription || !orderKey) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: slug, name, tag, image, tagline, description, longDescription, orderKey'
+                error: 'Missing required fields'
             });
         }
 
-        // Check if slug already exists
         const existingProject = await Project.findOne({ slug });
         if (existingProject) {
             return res.status(409).json({
@@ -163,7 +162,6 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Check if orderKey already exists
         const existingOrderKey = await Project.findOne({ orderKey });
         if (existingOrderKey) {
             return res.status(409).json({
@@ -203,7 +201,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /api/projects - Get all projects with pagination and filtering
+// GET /api/projects - Get all projects
 router.get('/', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -266,11 +264,10 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/projects/:slug - Get a single project by slug
+// GET /api/projects/:slug
 router.get('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
-
         const project = await Project.findOne({ slug });
         if (!project) {
             return res.status(404).json({
@@ -278,7 +275,6 @@ router.get('/:slug', async (req, res) => {
                 error: 'Project not found'
             });
         }
-
         res.status(200).json({
             success: true,
             data: project
@@ -292,209 +288,7 @@ router.get('/:slug', async (req, res) => {
     }
 });
 
-// GET /api/projects/id/:id - Get a single project by ID
-router.get('/id/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const project = await Project.findById(id);
-        if (!project) {
-            return res.status(404).json({
-                success: false,
-                error: 'Project not found'
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            data: project
-        });
-    } catch (error) {
-        console.error('Error fetching project:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch project'
-        });
-    }
-});
-
-// GET /api/projects/tag/:tag - Get projects by tag
-router.get('/tag/:tag', async (req, res) => {
-    try {
-        const { tag } = req.params;
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-        const skip = (page - 1) * limit;
-
-        const [projects, total] = await Promise.all([
-            Project.find({ tag: { $regex: tag, $options: 'i' }, active: true })
-                .sort({ orderKey: 1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            Project.countDocuments({ tag: { $regex: tag, $options: 'i' }, active: true }),
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: projects,
-            pagination: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-            },
-        });
-    } catch (error) {
-        console.error('Error fetching projects by tag:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch projects'
-        });
-    }
-});
-
-// GET /api/projects/status/:statuse - Get projects by status
-router.get('/status/:statuse', async (req, res) => {
-    try {
-        const { statuse } = req.params;
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-        const skip = (page - 1) * limit;
-
-        const validStatuses = ['canorder', 'cannotorder'];
-        if (!validStatuses.includes(statuse)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid status. Must be: canorder, cannotorder'
-            });
-        }
-
-        const [projects, total] = await Promise.all([
-            Project.find({ statuse, active: true })
-                .sort({ orderKey: 1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            Project.countDocuments({ statuse, active: true }),
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: projects,
-            pagination: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-            },
-        });
-    } catch (error) {
-        console.error('Error fetching projects by status:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch projects'
-        });
-    }
-});
-
-// GET /api/projects/stats/overview - Get project statistics
-router.get('/stats/overview', async (req, res) => {
-    try {
-        const total = await Project.countDocuments();
-        const active = await Project.countDocuments({ active: true });
-        const inactive = await Project.countDocuments({ active: false });
-
-        const statusCounts = await Project.aggregate([
-            {
-                $group: {
-                    _id: '$statuse',
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-
-        const tagCounts = await Project.aggregate([
-            {
-                $group: {
-                    _id: '$tag',
-                    count: { $sum: 1 }
-                }
-            },
-            { $sort: { count: -1 } },
-            { $limit: 10 }
-        ]);
-
-        const recentProjects = await Project.find()
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .lean()
-            .exec();
-
-        const statusMap = {};
-        statusCounts.forEach(item => {
-            statusMap[item._id] = item.count;
-        });
-
-        res.status(200).json({
-            success: true,
-            data: {
-                total,
-                active,
-                inactive,
-                byStatus: statusMap,
-                topTags: tagCounts,
-                recentProjects
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching project stats:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch statistics'
-        });
-    }
-});
-
-// GET /api/projects/active/true - Get all active projects
-router.get('/active/true', async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-        const skip = (page - 1) * limit;
-
-        const [projects, total] = await Promise.all([
-            Project.find({ active: true })
-                .sort({ orderKey: 1 })
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .exec(),
-            Project.countDocuments({ active: true }),
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: projects,
-            pagination: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-            },
-        });
-    } catch (error) {
-        console.error('Error fetching active projects:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch active projects'
-        });
-    }
-});
-
-// PUT /api/projects/:slug - Update a project (triggers status change email)
+// PUT /api/projects/:slug - Full update
 router.put('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -508,7 +302,6 @@ router.put('/:slug', async (req, res) => {
             });
         }
 
-        // Check if new slug conflicts with existing
         if (updateData.slug && updateData.slug !== slug) {
             const existing = await Project.findOne({ slug: updateData.slug });
             if (existing) {
@@ -519,7 +312,6 @@ router.put('/:slug', async (req, res) => {
             }
         }
 
-        // Check if new orderKey conflicts with existing
         if (updateData.orderKey && updateData.orderKey !== project.orderKey) {
             const existing = await Project.findOne({ orderKey: updateData.orderKey });
             if (existing) {
@@ -530,11 +322,9 @@ router.put('/:slug', async (req, res) => {
             }
         }
 
-        // Track status change
         const oldStatus = project.statuse;
         const statusChanged = updateData.statuse && updateData.statuse !== oldStatus;
 
-        // Update fields
         Object.keys(updateData).forEach(key => {
             if (key !== '_id' && key !== '__v' && key !== 'createdAt' && key !== 'updatedAt') {
                 if (key === 'image' && typeof updateData.image === 'string') {
@@ -549,7 +339,6 @@ router.put('/:slug', async (req, res) => {
 
         await project.save();
 
-        // Send status update email if status changed
         if (statusChanged) {
             sendProjectStatusUpdateEmail(project, oldStatus).catch(err =>
                 console.error('Failed to send project status update email:', err)
@@ -570,7 +359,7 @@ router.put('/:slug', async (req, res) => {
     }
 });
 
-// PATCH /api/projects/:slug/status - Update project status (sends email notification)
+// PATCH /api/projects/:slug/status - Update status only
 router.patch('/:slug/status', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -603,7 +392,6 @@ router.patch('/:slug/status', async (req, res) => {
         project.statuse = statuse;
         await project.save();
 
-        // Send status update email
         sendProjectStatusUpdateEmail(project, oldStatus).catch(err =>
             console.error('Failed to send project status update email:', err)
         );
@@ -622,7 +410,7 @@ router.patch('/:slug/status', async (req, res) => {
     }
 });
 
-// PATCH /api/projects/:slug/active - Toggle project active status
+// PATCH /api/projects/:slug/active - Toggle active
 router.patch('/:slug/active', async (req, res) => {
     try {
         const { slug } = req.params;
@@ -660,11 +448,162 @@ router.patch('/:slug/active', async (req, res) => {
     }
 });
 
-// DELETE /api/projects/:slug - Delete a project
+// POST /api/projects/:slug/metrics - Add metric
+router.post('/:slug/metrics', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { label, value } = req.body;
+
+        if (!label || !value) {
+            return res.status(400).json({
+                success: false,
+                error: 'Label and value are required'
+            });
+        }
+
+        const project = await Project.findOne({ slug });
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                error: 'Project not found'
+            });
+        }
+
+        project.metrics.push({ label, value });
+        await project.save();
+
+        res.status(200).json({
+            success: true,
+            data: project,
+            message: 'Metric added successfully'
+        });
+    } catch (error) {
+        console.error('Error adding metric:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to add metric'
+        });
+    }
+});
+
+// DELETE /api/projects/:slug/metrics/:index - Remove metric
+router.delete('/:slug/metrics/:index', async (req, res) => {
+    try {
+        const { slug, index } = req.params;
+        const idx = parseInt(index);
+
+        const project = await Project.findOne({ slug });
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                error: 'Project not found'
+            });
+        }
+
+        if (idx < 0 || idx >= project.metrics.length) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid metric index'
+            });
+        }
+
+        project.metrics.splice(idx, 1);
+        await project.save();
+
+        res.status(200).json({
+            success: true,
+            data: project,
+            message: 'Metric removed successfully'
+        });
+    } catch (error) {
+        console.error('Error removing metric:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to remove metric'
+        });
+    }
+});
+
+// POST /api/projects/:slug/features - Add feature
+router.post('/:slug/features', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { title, desc } = req.body;
+
+        if (!title || !desc) {
+            return res.status(400).json({
+                success: false,
+                error: 'Title and description are required'
+            });
+        }
+
+        const project = await Project.findOne({ slug });
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                error: 'Project not found'
+            });
+        }
+
+        project.features.push({ title, desc });
+        await project.save();
+
+        res.status(200).json({
+            success: true,
+            data: project,
+            message: 'Feature added successfully'
+        });
+    } catch (error) {
+        console.error('Error adding feature:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to add feature'
+        });
+    }
+});
+
+// DELETE /api/projects/:slug/features/:index - Remove feature
+router.delete('/:slug/features/:index', async (req, res) => {
+    try {
+        const { slug, index } = req.params;
+        const idx = parseInt(index);
+
+        const project = await Project.findOne({ slug });
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                error: 'Project not found'
+            });
+        }
+
+        if (idx < 0 || idx >= project.features.length) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid feature index'
+            });
+        }
+
+        project.features.splice(idx, 1);
+        await project.save();
+
+        res.status(200).json({
+            success: true,
+            data: project,
+            message: 'Feature removed successfully'
+        });
+    } catch (error) {
+        console.error('Error removing feature:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to remove feature'
+        });
+    }
+});
+
+// DELETE /api/projects/:slug - Delete project
 router.delete('/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
-
         const project = await Project.findOne({ slug });
         if (!project) {
             return res.status(404).json({
@@ -674,7 +613,6 @@ router.delete('/:slug', async (req, res) => {
         }
 
         await project.deleteOne();
-
         res.status(200).json({
             success: true,
             message: 'Project deleted successfully'
@@ -684,106 +622,6 @@ router.delete('/:slug', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to delete project'
-        });
-    }
-});
-
-// DELETE /api/projects/batch - Delete multiple projects
-router.delete('/batch', async (req, res) => {
-    try {
-        const { ids } = req.body;
-
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'ids array is required'
-            });
-        }
-
-        const result = await Project.deleteMany({
-            _id: { $in: ids }
-        });
-
-        res.status(200).json({
-            success: true,
-            data: {
-                deleted: result.deletedCount
-            },
-            message: `${result.deletedCount} projects deleted successfully`
-        });
-    } catch (error) {
-        console.error('Error deleting batch projects:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to delete projects'
-        });
-    }
-});
-
-// POST /api/projects/batch - Get multiple projects by IDs
-router.post('/batch', async (req, res) => {
-    try {
-        const { ids } = req.body;
-
-        if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'ids array is required'
-            });
-        }
-
-        const projects = await Project.find({
-            _id: { $in: ids }
-        })
-            .sort({ orderKey: 1 })
-            .lean()
-            .exec();
-
-        res.status(200).json({
-            success: true,
-            data: projects
-        });
-    } catch (error) {
-        console.error('Error fetching batch projects:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch projects'
-        });
-    }
-});
-
-// POST /api/projects/:slug/resend-status - Resend status update email
-router.post('/:slug/resend-status', async (req, res) => {
-    try {
-        const { slug } = req.params;
-
-        const project = await Project.findOne({ slug });
-        if (!project) {
-            return res.status(404).json({
-                success: false,
-                error: 'Project not found'
-            });
-        }
-
-        const result = await sendProjectStatusUpdateEmail(project, null);
-
-        if (result.success) {
-            res.status(200).json({
-                success: true,
-                message: `Status update email resent to ${result.count} subscribers`
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                error: 'Failed to send status update email',
-                details: result.error
-            });
-        }
-    } catch (error) {
-        console.error('Error resending status update:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to resend status update'
         });
     }
 });
