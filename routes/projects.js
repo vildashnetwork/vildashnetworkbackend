@@ -4,7 +4,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import Project from '../models/Projects.js';
 import axios from 'axios';
-import User from '../models/User.js'; // Make sure to import User model
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -97,6 +97,12 @@ const sendProjectStatusUpdateEmail = async (project, oldStatus) => {
                                    style="background: #2563eb; color: white; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: 500; display: inline-block;">
                                     View Project Details
                                 </a>
+                                ${project.weburl ? `
+                                <a href="${project.weburl}" target="_blank" 
+                                   style="background: #10b981; color: white; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: 500; display: inline-block; margin-left: 10px;">
+                                    Visit Website
+                                </a>
+                                ` : ''}
                             </div>
                         </div>
                         
@@ -139,6 +145,7 @@ router.post('/', async (req, res) => {
             tagline,
             description,
             longDescription,
+            weburl,
             features,
             metrics,
             orderKey,
@@ -178,6 +185,7 @@ router.post('/', async (req, res) => {
             tagline,
             description,
             longDescription: Array.isArray(longDescription) ? longDescription : [longDescription],
+            weburl: weburl || '',
             features: features || [],
             metrics: metrics || [],
             orderKey,

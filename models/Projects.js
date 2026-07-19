@@ -30,6 +30,10 @@ const ProjectSchema = new mongoose.Schema({
         type: [String],
         required: true
     },
+    weburl: {
+        type: String,
+        required: true
+    },
     features: [
         {
             title: {
