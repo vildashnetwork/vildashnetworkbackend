@@ -25,11 +25,11 @@ const app = express();
 // CORS Configuration
 app.use(cors({
     origin: [
-        "https://www.vildashnetwork.com",
-        "https://dashboard.vildashnetwork.com",
-        "https://vildash-horizon.vercel.app",
         "http://localhost:8081",
         "http://localhost:8080",
+        "https://vildash-horizon.vercel.app",
+        "https://www.vildashnetwork.com",
+        "https://dashboard.vildashnetwork.com"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
