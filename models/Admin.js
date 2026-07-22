@@ -9,7 +9,7 @@ const adminschema = new mongoose.Schema(
         email: {
             type: String,
             required: true,
-            unique: true, // creates index
+            unique: true,
             lowercase: true,
             trim: true,
         },
@@ -28,11 +28,11 @@ const adminschema = new mongoose.Schema(
         googleId: {
             type: String,
             default: null,
-            sparse: true, // allows multiple nulls while still indexing non‑null values
+            sparse: true,
         },
         twofactorenabled: {
             type: Boolean,
-            default: true, // 2FA enabled by default
+            default: true,
         },
         otpcode: {
             type: String,
@@ -44,7 +44,7 @@ const adminschema = new mongoose.Schema(
         },
         isVerified: {
             type: Boolean,
-            default: false,
+            default: false, // ✅ default false for all new users
         },
         lastLogin: {
             type: Date,
@@ -58,7 +58,7 @@ const adminschema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Indexes (additional ones beyond those defined by unique/sparse)
+// Indexes
 adminschema.index({ createdAt: -1 });
 adminschema.index({ isActive: 1, createdAt: -1 });
 
@@ -111,7 +111,7 @@ adminschema.statics.findOrCreateGoogleUser = async function (profile) {
         return user;
     }
 
-    // Create new user
+    // ✅ Create new user – isVerified explicitly set to false
     user = await this.create({
         name:
             profile.displayName ||
@@ -119,7 +119,7 @@ adminschema.statics.findOrCreateGoogleUser = async function (profile) {
         email: email,
         googleId: profile.id,
         avatar: profile.photos?.[0]?.value || "",
-        isVerified: true,
+        isVerified: false, // 🔥 changed from true to false
         lastLogin: new Date(),
     });
 
