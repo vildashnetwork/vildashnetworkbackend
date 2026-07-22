@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const adminschema = new mongoose.Schema(
     {
+        role: {
+            type: String,
+            enum: ["member", "admin"],
+            default: "member"
+        },
         name: {
             type: String,
             required: true,
