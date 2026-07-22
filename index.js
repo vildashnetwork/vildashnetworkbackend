@@ -16,6 +16,7 @@ import gellary from "./routes/gallery.js"
 import news from "./routes/news.js"
 import orders from "./routes/orders.js"
 import projects from "./routes/projects.js"
+import admin from "./routes/admin.js"
 import "./config/passport.js";
 
 env.config();
@@ -98,6 +99,7 @@ app.use("/api/gellary", gellary)
 app.use("/api/news", news)
 app.use("/api/orders", orders)
 app.use("/api/projects", projects)
+app.use("/api/admin", admin)
 
 // ============ GOOGLE OAUTH ROUTES ============
 app.get("/auth/google", passport.authenticate("google", {
