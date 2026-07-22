@@ -288,7 +288,7 @@ router.get(
                 const tempToken = generateTempToken(admin._id);
 
                 // Redirect to frontend OTP page
-                const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+                const frontendUrl = process.env.ADMINFRONTEND_URL;
                 return res.redirect(`${frontendUrl}/admin/otp?tempToken=${encodeURIComponent(tempToken)}`);
             } else {
                 // 2FA disabled – issue final token and redirect to dashboard
