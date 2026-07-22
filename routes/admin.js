@@ -816,10 +816,11 @@ router.patch("/:id/verify", async (req, res) => {
 });
 
 // ------------------------- PUT: Update Admin -------------------------
+// routes/admin.js – update the PUT route
 router.put("/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, password, avatar, about, twofactorenabled, isActive } = req.body;
+        const { name, email, password, avatar, about, twofactorenabled, isActive, role } = req.body;
 
         const admin = await Admin.findById(id);
         if (!admin) {
@@ -839,6 +840,14 @@ router.put("/:id", async (req, res) => {
         if (about !== undefined) admin.about = about;
         if (twofactorenabled !== undefined) admin.twofactorenabled = twofactorenabled;
         if (isActive !== undefined) admin.isActive = isActive;
+
+        // Handle role update
+        if (role !== undefined) {
+            if (!["member", "admin"].includes(role)) {
+                return res.status(400).json({ message: "Invalid role. Must be 'member' or 'admin'" });
+            }
+            admin.role = role;
+        }
 
         if (password) {
             admin.password = await bcrypt.hash(password, SALT_ROUNDS);
