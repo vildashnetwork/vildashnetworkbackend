@@ -289,7 +289,7 @@ router.get(
 
                 // Redirect to frontend OTP page
                 const frontendUrl = process.env.ADMINFRONTEND_URL;
-                return res.redirect(`${frontendUrl}/admin/otp?tempToken=${encodeURIComponent(tempToken)}`);
+                return res.redirect(`${frontendUrl}/dashboard/otp?tempToken=${encodeURIComponent(tempToken)}`);
             } else {
                 // 2FA disabled – issue final token and redirect to dashboard
                 const finalToken = jwt.sign(
