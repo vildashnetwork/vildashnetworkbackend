@@ -375,4 +375,24 @@ router.patch("/:id/toggle-2fa", async (req, res) => {
     }
 });
 
+// GET /api/admin/me - Get current admin profile
+router.get("/me", async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({ message: "No token provided" });
+        }
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const admin = await Admin.findById(decoded.id);
+        if (!admin) {
+            return res.status(404).json({ message: "Admin not found" });
+        }
+        res.status(200).json(filterAdmin(admin));
+    } catch (error) {
+        console.error("Me endpoint error:", error);
+        res.status(401).json({ message: "Invalid or expired token" });
+    }
+});
+
 export default router;
