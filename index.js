@@ -28,6 +28,7 @@ app.use(cors({
         "http://localhost:8081",
         "http://localhost:8080",
         "https://vildash-horizon.vercel.app",
+        "https://vildash-hub.vercel.app",
         "https://www.vildashnetwork.com",
         "https://dashboard.vildashnetwork.com"
     ],
