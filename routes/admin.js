@@ -820,7 +820,7 @@ router.patch("/:id/verify", async (req, res) => {
 router.put("/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, password, avatar, about, twofactorenabled, isActive, role } = req.body;
+        const { name, email, password, avatar, about, twofactorenabled, isActive, role, isVerified } = req.body;
 
         const admin = await Admin.findById(id);
         if (!admin) {
@@ -847,6 +847,14 @@ router.put("/:id", async (req, res) => {
                 return res.status(400).json({ message: "Invalid role. Must be 'member' or 'admin'" });
             }
             admin.role = role;
+        }
+
+        // 🔥 FIX: Add isVerified update
+        if (isVerified !== undefined) {
+            if (typeof isVerified !== "boolean") {
+                return res.status(400).json({ message: "isVerified must be a boolean" });
+            }
+            admin.isVerified = isVerified;
         }
 
         if (password) {
