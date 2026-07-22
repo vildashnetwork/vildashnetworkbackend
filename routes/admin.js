@@ -1,3 +1,4 @@
+// routes/admin.js
 import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -12,7 +13,7 @@ dotenv.config();
 const router = express.Router();
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET;
-const OTP_EXPIRY_MINUTES = 5;
+const OTP_EXPIRY_MINUTES = 10; // ✅ changed from 5 to 10
 
 // ------------------------- Helper: filter admin data -------------------------
 const filterAdmin = (adminDoc) => {
@@ -93,7 +94,8 @@ const setOtpForAdmin = async (admin) => {
 
 // ------------------------- Temp Token (short-lived) -------------------------
 const generateTempToken = (adminId) => {
-    return jwt.sign({ id: adminId, purpose: "otp" }, JWT_SECRET, { expiresIn: "5m" });
+    // ✅ expiry extended to 15 minutes to cover OTP entry time
+    return jwt.sign({ id: adminId, purpose: "otp" }, JWT_SECRET, { expiresIn: "15m" });
 };
 
 const verifyTempToken = (token) => {
@@ -126,7 +128,6 @@ router.post("/login", async (req, res) => {
 
         // ---- CHECK 2FA ENABLED ----
         if (admin.twofactorenabled) {
-            // Generate OTP and send email
             await setOtpForAdmin(admin);
             await sendAdminOtpEmail(admin);
 
@@ -137,7 +138,6 @@ router.post("/login", async (req, res) => {
                 message: "OTP sent to your email",
             });
         } else {
-            // 2FA disabled – issue final token directly
             const finalToken = jwt.sign(
                 { id: admin._id, email: admin.email, role: "admin" },
                 JWT_SECRET,
@@ -279,19 +279,16 @@ router.get(
         try {
             const admin = req.user;
 
-            // ---- CHECK 2FA ENABLED ----
             if (admin.twofactorenabled) {
-                // Generate OTP and send email
                 await setOtpForAdmin(admin);
                 await sendAdminOtpEmail(admin);
 
                 const tempToken = generateTempToken(admin._id);
 
-                // Redirect to frontend OTP page
-                const frontendUrl = process.env.ADMINFRONTEND_URL;
+                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.FRONTEND_URL || "http://localhost:3000";
+                // ✅ redirect to /dashboard/otp as per your route
                 return res.redirect(`${frontendUrl}/dashboard/otp?tempToken=${encodeURIComponent(tempToken)}`);
             } else {
-                // 2FA disabled – issue final token and redirect to dashboard
                 const finalToken = jwt.sign(
                     { id: admin._id, email: admin.email, role: "admin" },
                     JWT_SECRET,
@@ -315,16 +312,11 @@ router.put("/:id", async (req, res) => {
         const { id } = req.params;
         const { name, email, password, avatar, about, twofactorenabled, isActive } = req.body;
 
-        // (Optional) Authorization: only the admin themselves or a super admin can update.
-        // You can add middleware to check JWT and role.
-        // For simplicity, we'll skip auth here – you should implement it.
-
         const admin = await Admin.findById(id);
         if (!admin) {
             return res.status(404).json({ message: "Admin not found" });
         }
 
-        // If email is changed, check uniqueness
         if (email && email !== admin.email) {
             const existing = await Admin.findOne({ email: email.toLowerCase().trim() });
             if (existing) {
@@ -340,7 +332,6 @@ router.put("/:id", async (req, res) => {
         if (isActive !== undefined) admin.isActive = isActive;
 
         if (password) {
-            // Hash new password
             admin.password = await bcrypt.hash(password, SALT_ROUNDS);
         }
 
@@ -356,11 +347,11 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-// ------------------------- (Optional) Toggle 2FA -------------------------
+// ------------------------- Toggle 2FA -------------------------
 router.patch("/:id/toggle-2fa", async (req, res) => {
     try {
         const { id } = req.params;
-        const { enabled } = req.body; // boolean
+        const { enabled } = req.body;
 
         if (typeof enabled !== "boolean") {
             return res.status(400).json({ message: "enabled must be a boolean" });
