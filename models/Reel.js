@@ -8,6 +8,11 @@ const ReelCommentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    order: {
+        type: Number,
+        default: 0,
+        index: true,
+    },
     userId: {
         type: String,
         required: true

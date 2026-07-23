@@ -1073,4 +1073,33 @@ router.get('/tags/all', async (req, res) => {
     }
 });
 
+
+// routes/reels.js – add this route
+// PATCH /api/reels/reorder - Reorder reels
+router.patch('/reorder', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, error: 'ids array is required' });
+        }
+
+        // Update each reel's order based on its index in the array
+        const updates = ids.map((id, index) => ({
+            updateOne: {
+                filter: { _id: id },
+                update: { order: index },
+            },
+        }));
+
+        await Reel.bulkWrite(updates);
+
+        // Return updated reels sorted by order
+        const reels = await Reel.find().sort({ order: 1, createdAt: -1 }).lean();
+        // ... format and return
+    } catch (error) {
+        console.error('Error reordering reels:', error);
+        res.status(500).json({ success: false, error: 'Failed to reorder reels' });
+    }
+});
+
 export default router;
