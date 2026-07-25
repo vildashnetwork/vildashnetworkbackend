@@ -289,7 +289,7 @@ router.get(
 
             // Check verification status
             if (!admin.isVerified) {
-                const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.ADMINFRONTEND_URL;
                 return res.redirect(`${frontendUrl}/admin/login-failed?reason=unverified`);
             }
 
@@ -309,7 +309,7 @@ router.get(
                 );
                 await admin.updateLastLogin();
 
-                const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.ADMINFRONTEND_URL;
                 return res.redirect(`${frontendUrl}/admin?token=${encodeURIComponent(finalToken)}`);
             }
         } catch (error) {
