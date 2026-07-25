@@ -79,7 +79,7 @@ router.get('/', async (req, res) => {
 
         const [reels, total] = await Promise.all([
             Reel.find(query)
-                .sort({ createdAt: -1 })
+                .sort({ order: 1, createdAt: -1 }) // sort by order if exists, otherwise createdAt
                 .skip(skip)
                 .limit(limit)
                 .lean()
@@ -308,7 +308,8 @@ router.get('/:id/comments', async (req, res) => {
         const limit = Math.min(parseInt(req.query.limit) || 20, 100);
         const skip = (page - 1) * limit;
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -466,7 +467,8 @@ router.get('/:id/related', async (req, res) => {
         const userId = req.query.userId || 'guest';
         const limit = parseInt(req.query.limit) || 5;
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -524,7 +526,8 @@ router.get('/stats/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -562,7 +565,8 @@ router.put('/:id', async (req, res) => {
         const { id } = req.params;
         const { title, description, video, poster, tags, authorId } = req.body;
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -609,7 +613,8 @@ router.delete('/:id', async (req, res) => {
         const { id } = req.params;
         const { authorId } = req.query;
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -655,7 +660,8 @@ router.post('/:id/like', async (req, res) => {
             });
         }
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -718,7 +724,8 @@ router.get('/:id/like/check', async (req, res) => {
             });
         }
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -759,7 +766,8 @@ router.post('/:id/comments', async (req, res) => {
             });
         }
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -808,7 +816,8 @@ router.delete('/:id/comments/:commentId', async (req, res) => {
             });
         }
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -867,7 +876,8 @@ router.put('/:id/comments/:commentId', async (req, res) => {
             });
         }
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -928,7 +938,8 @@ router.post('/:id/view', async (req, res) => {
             });
         }
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -970,7 +981,8 @@ router.get('/:id/views', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id })
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
@@ -1074,9 +1086,9 @@ router.get('/tags/all', async (req, res) => {
     }
 });
 
+// ==================== REORDER ====================
 
-// routes/reels.js – add this route
-// PATCH /api/reels/reorder - Reorder reels
+// PATCH /api/reels/reorder - Reorder reels by their custom `id` field
 router.patch('/reorder', async (req, res) => {
     try {
         const { ids } = req.body;
@@ -1085,9 +1097,10 @@ router.patch('/reorder', async (req, res) => {
         }
 
         // Update each reel's order based on its index in the array
+        // We need to find by the custom `id` field, not `_id`
         const updates = ids.map((id, index) => ({
             updateOne: {
-                filter: { _id: id },
+                filter: { id: id }, // 👈 use the custom `id` field
                 update: { order: index },
             },
         }));
@@ -1096,7 +1109,36 @@ router.patch('/reorder', async (req, res) => {
 
         // Return updated reels sorted by order
         const reels = await Reel.find().sort({ order: 1, createdAt: -1 }).lean();
-        // ... format and return
+        const userId = req.query.userId || 'guest';
+
+        const formattedReels = reels.map((reel) => ({
+            id: reel.id || reel._id.toString(),
+            title: reel.title,
+            description: reel.description,
+            author: reel.author,
+            authorId: reel.authorId,
+            authorAvatar: reel.authorAvatar,
+            video: reel.video,
+            poster: reel.poster,
+            tags: reel.tags,
+            stats: {
+                likes: reel.likeCount || reel.likes.length,
+                comments: reel.commentCount || reel.comments.length,
+                views: reel.viewCount || reel.views.length,
+            },
+            userInteraction: {
+                isLiked: reel.likes.some((like) => like.userId === userId),
+                hasViewed: reel.views.some((view) => view.userId === userId),
+            },
+            createdAt: reel.createdAt,
+            updatedAt: reel.updatedAt,
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: formattedReels,
+            message: 'Reels reordered successfully',
+        });
     } catch (error) {
         console.error('Error reordering reels:', error);
         res.status(500).json({ success: false, error: 'Failed to reorder reels' });
