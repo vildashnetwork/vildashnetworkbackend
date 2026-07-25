@@ -93,7 +93,7 @@ const adminschema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Indexes - REMOVED duplicate slug index
+// Indexes
 adminschema.index({ createdAt: -1 });
 adminschema.index({ isActive: 1, createdAt: -1 });
 adminschema.index({ name: 1 });
@@ -145,14 +145,7 @@ adminschema.methods.updateLastLogin = async function () {
     return await this.save();
 };
 
-// ✅ FIXED: Pre-save middleware - simple sync version
-adminschema.pre('save', function (next) {
-    // Generate slug from name if not provided
-    if (!this.slug && this.name) {
-        this.slug = this.name.toLowerCase().replace(/\s+/g, '-');
-    }
-    next();
-});
+// ✅ REMOVED: pre('save') middleware - no next function needed
 
 // Static method: find or create Google user
 adminschema.statics.findOrCreateGoogleUser = async function (profile) {
@@ -171,6 +164,7 @@ adminschema.statics.findOrCreateGoogleUser = async function (profile) {
         return user;
     }
 
+    // Generate slug from display name
     const slug = profile.displayName
         ? profile.displayName.toLowerCase().replace(/\s+/g, '-')
         : undefined;
