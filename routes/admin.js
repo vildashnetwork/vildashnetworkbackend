@@ -310,7 +310,7 @@ router.get(
                 await admin.updateLastLogin();
 
                 const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.ADMINFRONTEND_URL;
-                return res.redirect(`${frontendUrl}/admin?token=${encodeURIComponent(finalToken)}`);
+                return res.redirect(`${frontendUrl}/dashboard?token=${encodeURIComponent(finalToken)}`);
             }
         } catch (error) {
             console.error("Google callback error:", error);
