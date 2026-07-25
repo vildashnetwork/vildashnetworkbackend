@@ -280,7 +280,7 @@ router.get("/auth/google", passport.authenticate("admin-google", {
 router.get(
     "/auth/google/callback",
     passport.authenticate("admin-google", {
-        failureRedirect: "/admin/login-failed",
+        failureRedirect: "https://vildash-hub.vercel.app/admin/login-failed",
         session: false,
     }),
     async (req, res) => {
