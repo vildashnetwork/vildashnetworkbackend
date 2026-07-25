@@ -514,13 +514,24 @@ router.get("/me", async (req, res) => {
 });
 
 // ------------------------- GET admins by name (URL param) -------------------------
+// routes/admin.js - Add this improved search route
+
+// ------------------------- GET admins by name (URL param) - IMPROVED -------------------------
 router.get("/search/:name", async (req, res) => {
     try {
         const { name } = req.params;
+
+        // Decode URL-encoded name
+        const decodedName = decodeURIComponent(name);
+
+        // Search by name or slug (case-insensitive, partial match)
         const admins = await Admin.find({
-            name: { $regex: name, $options: "i" }
+            $or: [
+                { name: { $regex: decodedName, $options: "i" } },
+                { slug: { $regex: decodedName, $options: "i" } }
+            ]
         })
-            .select("-password -otpcode -expirydate")
+            .select("-password -otpcode -expirydate -__v")
             .sort({ name: 1 })
             .lean();
 
