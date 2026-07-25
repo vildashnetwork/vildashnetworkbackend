@@ -1,11 +1,11 @@
 // models/Application.js
-
 import mongoose from "mongoose";
 
 const ApplicationSchema = new mongoose.Schema({
     applicationNumber: {
         type: String,
-        required: true
+        required: true,
+        unique: true // Added unique constraint
     },
     firstName: {
         type: String,
@@ -22,11 +22,13 @@ const ApplicationSchema = new mongoose.Schema({
     },
     linkedin: {
         type: String,
-        required: true
+        required: false, // Changed to false
+        default: "" // Added default
     },
     portfolio: {
         type: String,
-        required: true
+        required: false, // Changed to false
+        default: "" // Added default
     },
     position: {
         type: String,
@@ -38,7 +40,16 @@ const ApplicationSchema = new mongoose.Schema({
     },
     resumeName: {
         type: String,
-        required: true
+        required: false, // Changed to false
+        default: "" // Added default
+    },
+    resumeUrl: {
+        type: String,
+        default: "" // Added for Cloudinary URL
+    },
+    notes: {
+        type: String,
+        default: "" // Added for interview notes
     },
     date: {
         type: String,
@@ -47,10 +58,17 @@ const ApplicationSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ["Received", "Reviewing", "Interview", "Rejected", "Hired"],
-        default: "Reviewing"
-    },
+        default: "Received" // Changed from "Reviewing" to "Received" as first status
+    }
+}, {
+    timestamps: true // Added timestamps
 });
 
+// Add index for better query performance
+ApplicationSchema.index({ email: 1 });
+ApplicationSchema.index({ status: 1 });
+ApplicationSchema.index({ position: 1 });
+ApplicationSchema.index({ applicationNumber: 1 });
 
 const Application = mongoose.model("Application", ApplicationSchema);
 
