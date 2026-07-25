@@ -231,13 +231,14 @@ router.get('/popular', async (req, res) => {
     }
 });
 
-// GET /api/reels/:id - Get a single reel by ID
+// GET /api/reels/:id - Get a single reel by ID (using custom `id` field)
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.query.userId || 'guest';
 
-        const reel = await Reel.findById(id);
+        // ✅ Fix: use findOne({ id }) instead of findById(id)
+        const reel = await Reel.findOne({ id: id });
         if (!reel) {
             return res.status(404).json({
                 success: false,
