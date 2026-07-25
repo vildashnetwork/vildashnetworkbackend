@@ -386,10 +386,96 @@ router.patch("/:id/verify", async (req, res) => {
 
 // ------------------------- PUT: Update Admin -------------------------
 // routes/admin.js – update the PUT route
+// router.put("/:id", async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         const { name, email, password, avatar, about, twofactorenabled, isActive, role, isVerified } = req.body;
+
+//         const admin = await Admin.findById(id);
+//         if (!admin) {
+//             return res.status(404).json({ message: "Admin not found" });
+//         }
+
+//         if (email && email !== admin.email) {
+//             const existing = await Admin.findOne({ email: email.toLowerCase().trim() });
+//             if (existing) {
+//                 return res.status(409).json({ message: "Email already in use" });
+//             }
+//             admin.email = email.toLowerCase().trim();
+//         }
+
+//         if (name) admin.name = name;
+//         if (avatar !== undefined) admin.avatar = avatar;
+//         if (about !== undefined) admin.about = about;
+//         if (twofactorenabled !== undefined) admin.twofactorenabled = twofactorenabled;
+//         if (isActive !== undefined) admin.isActive = isActive;
+
+//         // Handle role update
+//         if (role !== undefined) {
+//             if (!["member", "admin"].includes(role)) {
+//                 return res.status(400).json({ message: "Invalid role. Must be 'member' or 'admin'" });
+//             }
+//             admin.role = role;
+//         }
+
+//         // 🔥 FIX: Add isVerified update
+//         if (isVerified !== undefined) {
+//             if (typeof isVerified !== "boolean") {
+//                 return res.status(400).json({ message: "isVerified must be a boolean" });
+//             }
+//             admin.isVerified = isVerified;
+//         }
+
+//         if (password) {
+//             admin.password = await bcrypt.hash(password, SALT_ROUNDS);
+//         }
+
+//         await admin.save();
+
+//         res.status(200).json({
+//             message: "Admin updated successfully",
+//             admin: filterAdmin(admin),
+//         });
+//     } catch (error) {
+//         console.error("Update admin error:", error);
+//         res.status(500).json({ message: "Server error" });
+//     }
+// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ------------------------- PUT: Update Admin -------------------------
 router.put("/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, password, avatar, about, twofactorenabled, isActive, role, isVerified } = req.body;
+        const {
+            name,
+            email,
+            password,
+            avatar,
+            about,
+            twofactorenabled,
+            isActive,
+            role,
+            isVerified,
+            bio,
+            focus,
+            linkedin,
+            twitter,
+            location,
+            joined,
+            slug
+        } = req.body;
 
         const admin = await Admin.findById(id);
         if (!admin) {
@@ -404,11 +490,26 @@ router.put("/:id", async (req, res) => {
             admin.email = email.toLowerCase().trim();
         }
 
+        // Check slug uniqueness if provided
+        if (slug && slug !== admin.slug) {
+            const existing = await Admin.findOne({ slug: slug });
+            if (existing) {
+                return res.status(409).json({ message: "Slug already in use" });
+            }
+            admin.slug = slug;
+        }
+
         if (name) admin.name = name;
         if (avatar !== undefined) admin.avatar = avatar;
         if (about !== undefined) admin.about = about;
         if (twofactorenabled !== undefined) admin.twofactorenabled = twofactorenabled;
         if (isActive !== undefined) admin.isActive = isActive;
+        if (bio !== undefined) admin.bio = bio;
+        if (focus !== undefined) admin.focus = focus;
+        if (linkedin !== undefined) admin.linkedin = linkedin;
+        if (twitter !== undefined) admin.twitter = twitter;
+        if (location !== undefined) admin.location = location;
+        if (joined !== undefined) admin.joined = joined;
 
         // Handle role update
         if (role !== undefined) {
@@ -418,7 +519,6 @@ router.put("/:id", async (req, res) => {
             admin.role = role;
         }
 
-        // 🔥 FIX: Add isVerified update
         if (isVerified !== undefined) {
             if (typeof isVerified !== "boolean") {
                 return res.status(400).json({ message: "isVerified must be a boolean" });
@@ -441,7 +541,6 @@ router.put("/:id", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
-
 // ------------------------- Toggle 2FA -------------------------
 router.patch("/:id/toggle-2fa", async (req, res) => {
     try {
