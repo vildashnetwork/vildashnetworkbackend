@@ -37,7 +37,7 @@ const adminschema = new mongoose.Schema(
         },
         twofactorenabled: {
             type: Boolean,
-            default: true,
+            default: false,
         },
         otpcode: {
             type: String,
@@ -49,7 +49,7 @@ const adminschema = new mongoose.Schema(
         },
         isVerified: {
             type: Boolean,
-            default: false, // ✅ default false for all new users
+            default: false,
         },
         lastLogin: {
             type: Date,
