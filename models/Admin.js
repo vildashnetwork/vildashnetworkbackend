@@ -1,3 +1,4 @@
+// models/Admin.js
 import mongoose from "mongoose";
 
 const adminschema = new mongoose.Schema(
@@ -35,7 +36,6 @@ const adminschema = new mongoose.Schema(
             type: String,
             default: "",
         },
-        // Team member specific fields
         bio: {
             type: [String],
             default: [],
@@ -93,11 +93,10 @@ const adminschema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Indexes
+// Indexes - REMOVED duplicate slug index
 adminschema.index({ createdAt: -1 });
 adminschema.index({ isActive: 1, createdAt: -1 });
 adminschema.index({ name: 1 });
-adminschema.index({ slug: 1 });
 
 // Virtual for full profile
 adminschema.virtual("profile").get(function () {
@@ -146,27 +145,11 @@ adminschema.methods.updateLastLogin = async function () {
     return await this.save();
 };
 
-// ✅ FIXED: Pre-save middleware with proper error handling
+// ✅ FIXED: Pre-save middleware - simple sync version
 adminschema.pre('save', function (next) {
     // Generate slug from name if not provided
     if (!this.slug && this.name) {
         this.slug = this.name.toLowerCase().replace(/\s+/g, '-');
-    }
-    next();
-});
-
-// ✅ FIXED: Pre-save middleware for slug uniqueness check (optional)
-adminschema.pre('save', async function (next) {
-    // Only check if slug exists and is being modified
-    if (this.isModified('slug') && this.slug) {
-        const existing = await this.constructor.findOne({
-            slug: this.slug,
-            _id: { $ne: this._id }
-        });
-        if (existing) {
-            // If slug exists, append a random number
-            this.slug = `${this.slug}-${Math.floor(Math.random() * 10000)}`;
-        }
     }
     next();
 });
@@ -181,7 +164,6 @@ adminschema.statics.findOrCreateGoogleUser = async function (profile) {
     let user = await this.findOne({ email });
 
     if (user) {
-        // Update googleId if not already set
         if (!user.googleId) {
             user.googleId = profile.id;
             await user.save();
@@ -189,7 +171,6 @@ adminschema.statics.findOrCreateGoogleUser = async function (profile) {
         return user;
     }
 
-    // Create new user – isVerified explicitly set to false
     const slug = profile.displayName
         ? profile.displayName.toLowerCase().replace(/\s+/g, '-')
         : undefined;
