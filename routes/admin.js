@@ -314,7 +314,7 @@ router.get(
             }
         } catch (error) {
             console.error("Google callback error:", error);
-            res.redirect("/admin/login-failed");
+            res.redirect("https://vildash-hub.vercel.app/admin/login-failed");
         }
     }
 );
