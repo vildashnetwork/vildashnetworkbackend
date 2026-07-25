@@ -1,7 +1,4 @@
 
-
-
-
 // routes/admin.js
 import express from "express";
 import bcrypt from "bcrypt";
@@ -22,7 +19,7 @@ const OTP_EXPIRY_MINUTES = 10;
 // ------------------------- Helper: filter admin data -------------------------
 const filterAdmin = (adminDoc) => {
     const { password, __v, otpcode, expirydate, ...rest } = adminDoc.toObject();
-    return rest; // includes isVerified, googleId, etc.
+    return rest;
 };
 
 // ------------------------- Brevo Email Sender (OTP) -------------------------
@@ -123,7 +120,6 @@ router.post("/login", async (req, res) => {
             return res.status(401).json({ message: "Invalid email or password" });
         }
 
-        // Check if account is verified
         if (!admin.isVerified) {
             return res.status(403).json({ message: "Account not verified. Please contact support." });
         }
@@ -136,7 +132,6 @@ router.post("/login", async (req, res) => {
         if (admin.twofactorenabled) {
             await setOtpForAdmin(admin);
             await sendAdminOtpEmail(admin);
-
             const tempToken = generateTempToken(admin._id);
             return res.status(200).json({
                 requiresOtp: true,
@@ -150,7 +145,6 @@ router.post("/login", async (req, res) => {
                 { expiresIn: "7d" }
             );
             await admin.updateLastLogin();
-
             return res.status(200).json({
                 requiresOtp: false,
                 token: finalToken,
@@ -184,7 +178,6 @@ router.post("/verify-otp", async (req, res) => {
             return res.status(404).json({ message: "Admin not found" });
         }
 
-        // Check verification status
         if (!admin.isVerified) {
             return res.status(403).json({ message: "Account not verified. Please contact support." });
         }
@@ -277,10 +270,11 @@ router.get("/auth/google", passport.authenticate("admin-google", {
     scope: ["profile", "email"],
 }));
 
+// ✅ FIXED: Use relative path for failureRedirect and environment variable for frontend URL
 router.get(
     "/auth/google/callback",
     passport.authenticate("admin-google", {
-        failureRedirect: "https://vildash-hub.vercel.app/admin/login-failed",
+        failureRedirect: "/admin/login-failed", // ✅ Use relative path, not absolute URL
         session: false,
     }),
     async (req, res) => {
@@ -289,7 +283,7 @@ router.get(
 
             // Check verification status
             if (!admin.isVerified) {
-                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.ADMINFRONTEND_URL;
+                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.FRONTEND_URL || "http://localhost:3000";
                 return res.redirect(`${frontendUrl}/admin/login-failed?reason=unverified`);
             }
 
@@ -299,7 +293,7 @@ router.get(
 
                 const tempToken = generateTempToken(admin._id);
 
-                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.ADMINFRONTEND_URL;
+                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.FRONTEND_URL || "http://localhost:3000";
                 return res.redirect(`${frontendUrl}/admin/otp?tempToken=${encodeURIComponent(tempToken)}`);
             } else {
                 const finalToken = jwt.sign(
@@ -309,12 +303,13 @@ router.get(
                 );
                 await admin.updateLastLogin();
 
-                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.ADMINFRONTEND_URL;
+                const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.FRONTEND_URL || "http://localhost:3000";
                 return res.redirect(`${frontendUrl}/dashboard?token=${encodeURIComponent(finalToken)}`);
             }
         } catch (error) {
             console.error("Google callback error:", error);
-            res.redirect("https://vildash-hub.vercel.app/admin/login-failed");
+            const frontendUrl = process.env.ADMINFRONTEND_URL || process.env.FRONTEND_URL || "http://localhost:3000";
+            res.redirect(`${frontendUrl}/admin/login-failed`);
         }
     }
 );
@@ -385,76 +380,6 @@ router.patch("/:id/verify", async (req, res) => {
 });
 
 // ------------------------- PUT: Update Admin -------------------------
-// routes/admin.js – update the PUT route
-// router.put("/:id", async (req, res) => {
-//     try {
-//         const { id } = req.params;
-//         const { name, email, password, avatar, about, twofactorenabled, isActive, role, isVerified } = req.body;
-
-//         const admin = await Admin.findById(id);
-//         if (!admin) {
-//             return res.status(404).json({ message: "Admin not found" });
-//         }
-
-//         if (email && email !== admin.email) {
-//             const existing = await Admin.findOne({ email: email.toLowerCase().trim() });
-//             if (existing) {
-//                 return res.status(409).json({ message: "Email already in use" });
-//             }
-//             admin.email = email.toLowerCase().trim();
-//         }
-
-//         if (name) admin.name = name;
-//         if (avatar !== undefined) admin.avatar = avatar;
-//         if (about !== undefined) admin.about = about;
-//         if (twofactorenabled !== undefined) admin.twofactorenabled = twofactorenabled;
-//         if (isActive !== undefined) admin.isActive = isActive;
-
-//         // Handle role update
-//         if (role !== undefined) {
-//             if (!["member", "admin"].includes(role)) {
-//                 return res.status(400).json({ message: "Invalid role. Must be 'member' or 'admin'" });
-//             }
-//             admin.role = role;
-//         }
-
-//         // 🔥 FIX: Add isVerified update
-//         if (isVerified !== undefined) {
-//             if (typeof isVerified !== "boolean") {
-//                 return res.status(400).json({ message: "isVerified must be a boolean" });
-//             }
-//             admin.isVerified = isVerified;
-//         }
-
-//         if (password) {
-//             admin.password = await bcrypt.hash(password, SALT_ROUNDS);
-//         }
-
-//         await admin.save();
-
-//         res.status(200).json({
-//             message: "Admin updated successfully",
-//             admin: filterAdmin(admin),
-//         });
-//     } catch (error) {
-//         console.error("Update admin error:", error);
-//         res.status(500).json({ message: "Server error" });
-//     }
-// });
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ------------------------- PUT: Update Admin -------------------------
 router.put("/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -490,7 +415,6 @@ router.put("/:id", async (req, res) => {
             admin.email = email.toLowerCase().trim();
         }
 
-        // Check slug uniqueness if provided
         if (slug && slug !== admin.slug) {
             const existing = await Admin.findOne({ slug: slug });
             if (existing) {
@@ -511,7 +435,6 @@ router.put("/:id", async (req, res) => {
         if (location !== undefined) admin.location = location;
         if (joined !== undefined) admin.joined = joined;
 
-        // Handle role update
         if (role !== undefined) {
             if (!["member", "admin"].includes(role)) {
                 return res.status(400).json({ message: "Invalid role. Must be 'member' or 'admin'" });
@@ -541,6 +464,7 @@ router.put("/:id", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+
 // ------------------------- Toggle 2FA -------------------------
 router.patch("/:id/toggle-2fa", async (req, res) => {
     try {
@@ -589,7 +513,6 @@ router.get("/me", async (req, res) => {
     }
 });
 
-
 // ------------------------- GET admins by name (URL param) -------------------------
 router.get("/search/:name", async (req, res) => {
     try {
@@ -611,7 +534,6 @@ router.get("/search/:name", async (req, res) => {
     }
 });
 
-
 // ------------------------- GET all admins (PUBLIC - no token required) -------------------------
 router.get("/public", async (req, res) => {
     try {
@@ -629,4 +551,5 @@ router.get("/public", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+
 export default router;
