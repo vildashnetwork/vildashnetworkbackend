@@ -490,4 +490,26 @@ router.get("/me", async (req, res) => {
     }
 });
 
+
+// ------------------------- GET admins by name (URL param) -------------------------
+router.get("/search/:name", async (req, res) => {
+    try {
+        const { name } = req.params;
+        const admins = await Admin.find({
+            name: { $regex: name, $options: "i" }
+        })
+            .select("-password -otpcode -expirydate")
+            .sort({ name: 1 })
+            .lean();
+
+        res.status(200).json({
+            data: admins,
+            count: admins.length,
+        });
+    } catch (error) {
+        console.error("Search admins error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 export default router;
